@@ -651,7 +651,10 @@ class ForkingMixIn:
                 finally:
                     os._exit(1)
 
-
+'''
+# 对比上面的FrokingMixIn,这里的ThreadingMixIn提供一种以线程方式来处理多个连接。关于利用多线程还是
+  多进程来处理多连接，稍后查资料深入了解一下。
+'''
 class ThreadingMixIn:
     """Mix-in class to handle each request in a new thread."""
 
@@ -698,6 +701,9 @@ if hasattr(socket, 'AF_UNIX'):
 
     class ThreadingUnixDatagramServer(ThreadingMixIn, UnixDatagramServer): pass
 
+'''
+# 应该是建立socket server的关键了，都要继承这个类，再覆盖。
+'''
 class BaseRequestHandler:
 
     """Base class for request handler classes.
