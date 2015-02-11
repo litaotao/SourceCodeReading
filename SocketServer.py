@@ -75,7 +75,7 @@ contains state in memory that can be modified by requests (since the
 modifications in the child process would never reach the initial state
 kept in the parent process and passed to each child).  In this case,
 you can use a threading server, but you will probably have to use
-locks to avoid two requests that come in nearly simultaneous to apply
+locks to avoid two requests that come in nearly s imultaneous to apply
 conflicting changes to the server state.
 
 On the other hand, if you are building e.g. an HTTP server, where all
@@ -160,21 +160,23 @@ except ImportError:
     import dummy_threading as threading
 
 '''
- __all__ 只会影响 from <module> import * 语句，如果定义了 __all__, 那么该语句将会导出
- 所有在__all__里定义的函数，变量，对象等；如果没有定义 __all__, 那么该语句将会导出 <module>
- 里所有未以_开头的变量，函数，对象等。
+# __all__ 只会影响 from <module> import * 语句，如果定义了 __all__, 那么该语句将会导出
+  所有在__all__里定义的函数，变量，对象等；如果没有定义 __all__, 那么该语句将会导出 <module>
+  里所有未以_开头的变量，函数，对象等。
 '''
 __all__ = ["TCPServer","UDPServer","ForkingUDPServer","ForkingTCPServer",
            "ThreadingUDPServer","ThreadingTCPServer","BaseRequestHandler",
            "StreamRequestHandler","DatagramRequestHandler",
            "ThreadingMixIn", "ForkingMixIn"]
+
 '''
- python内置函数，无需导出即可使用，再启动python shell的时候自动导出。
+# python内置函数，无需导出即可使用，再启动python shell的时候自动导出。
 '''
 if hasattr(socket, "AF_UNIX"):
     __all__.extend(["UnixStreamServer","UnixDatagramServer",
                     "ThreadingUnixStreamServer",
                     "ThreadingUnixDatagramServer"])
+
 
 def _eintr_retry(func, *args):
     """restart a system call interrupted by EINTR"""
@@ -185,6 +187,16 @@ def _eintr_retry(func, *args):
             if e.args[0] != errno.EINTR:
                 raise
 
+'''
+# 默认继承object哦。
+  这种类型的定义是老版本的Classic Style 定义方式，推荐使用New Style方式定义类，详情参考：
+  http://wiki.woodpecker.org.cn/moin/PyNewStyleClass
+  注意，刚刚犯的错： a=SocketServer.BaseServer 并不是初始化一个类，而是相当于给这个BaseServer
+  定义一个别名，可以用过a(server_address, RequestHandlerClass)或SocketServer.BaseServer(server_address, RequestHandlerClass)
+  来创建一个类对象了。
+  这种类的注释方式可以参考哦，类的注释方式和函数的注释方式还是有所不同的。
+# 这个类应该是不能直接拿来实例一个对象的吧，应该是顶层的一个抽象。
+'''
 class BaseServer:
 
     """Base class for server classes.
@@ -246,6 +258,10 @@ class BaseServer:
         """
         pass
 
+    '''
+    # serve_forever 还不是很透彻，具体要了解透彻select和threading后哦。现在只能不确定地
+      说出一个自己理解的流程。
+    '''
     def serve_forever(self, poll_interval=0.5):
         """Handle one request at a time until shutdown.
 
@@ -268,6 +284,9 @@ class BaseServer:
             self.__shutdown_request = False
             self.__is_shut_down.set()
 
+    '''
+    # 等到阅读完threading.Event源码后肯定会了解这块的。
+    '''
     def shutdown(self):
         """Stops the serve_forever loop.
 
@@ -429,15 +448,28 @@ class TCPServer(BaseServer):
     - socket
 
     """
-
+    '''
+    # 协议族，也叫协议域，APUE第四章有讲，有AP_INET,AF_INET6,AF_LOCAL,AF_ROUTE,AF_KEY五种，
+      分别对应IPv4协议，IPv6协议，Unix域协议，路由套接字，密钥套接字。这部分不是很熟悉，需要
+      多读APUE及网络编程的相关知识才行，这里先简单了解一下。
+    '''
     address_family = socket.AF_INET
-
+    '''
+    # 套接字类型，同样也是APUE第四章了解而来的，四种套接字类型SOCK_STREAM,SOCK_DGRAM,SOCK_SEQPACKET,SOCK_RAW
+      分别对应字节流，数据报，有序分组，原始套接字。
+    '''
     socket_type = socket.SOCK_STREAM
 
     request_queue_size = 5
 
     allow_reuse_address = False
-
+    '''
+    # 这里是显示调用了BaseServer的初始化函数__init__，这很正常，但在有多个爹的时候，最好用super来进行父类初始化。
+      哦，这里还有一个默认值为True的参数bind_and_activate，目的是绑定和启动监听，这样的话应该不用手动bind和listen了。
+      刚刚实验了，bind_and_activate这个参数确实是这样用的，如果设置为True的话，服务端不用再显示地bind和listen，客户端
+      即可连接服务端；若设置为False，且服务端没有显示绑定和监听的话，客户端连接会报connect refused错误，在win下错误代码是10061，
+      错误信息是WSAECONNREFUSED，在unix下错误代码是1，错误信息是ECONNREFUSED。
+    '''
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
         """Constructor.  May be extended, do not override."""
         BaseServer.__init__(self, server_address, RequestHandlerClass)
@@ -447,6 +479,9 @@ class TCPServer(BaseServer):
             self.server_bind()
             self.server_activate()
 
+    '''
+    # allow_reuse_address: 允许地址复用，这个APUE上也看了，但理解得不是很透彻，需要慢慢理解，一次理解一点点。
+    '''
     def server_bind(self):
         """Called by constructor to bind the socket.
 
@@ -482,6 +517,9 @@ class TCPServer(BaseServer):
         """
         return self.socket.fileno()
 
+    '''
+    # 会阻塞，直到有client连接server。返回一个tuple，例如：(<socket._socketobject at 0x3e60528>, ('127.0.0.1', 14578))
+    '''
     def get_request(self):
         """Get the request and client address from the socket.
 
@@ -504,6 +542,12 @@ class TCPServer(BaseServer):
         """Called to clean up an individual request."""
         request.close()
 
+'''
+# UDPServer继承自TCPServer。但这里有一点不太清楚的地方，UDP方式好像是不需要绑定和监听的，但TCP的初始化
+  默认是有一个绑定和监听的参数 bind_and_activate，这样做有意思吗？而且UDPServer这个类里的server_activate
+  也说明了无需listen，但在初始化是确实是server_activate了的，虽然由UDPServer的server_activate覆盖了，但这样
+  也有一点设计上的不清晰吧，anyway, it works, that's the key.
+'''
 
 class UDPServer(TCPServer):
 
@@ -531,6 +575,10 @@ class UDPServer(TCPServer):
         # No need to close anything.
         pass
 
+'''
+# MixIn技术，看了篇啄木鸟社区的一篇文章和SO上的一个问答，简单的理解就是一种多继承，稍稍有点特殊的多继承，至于
+  特殊在哪里，这个就不是很清楚了，哈哈，慢慢理解吧。先把它简单地理解成一个多继承的机制吧。
+'''
 class ForkingMixIn:
 
     """Mix-in class to handle each request in a new process."""
