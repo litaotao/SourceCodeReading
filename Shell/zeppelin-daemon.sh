@@ -21,13 +21,42 @@
 # description: Start and stop daemon script for.
 #
 
+'''
+# 
+'''
+'''
+# 定义变量，变量名不用加美元符号$，使用一个定义过的变量时，只要在前面加上美元符号$即可；
+  echo $PATH 等于 echo ${PATH}
+  我想下面是定义变量BIN，只是不是简单地定义，而是使用语句给变量赋值，语句是dirname "${BASH_SOURCE-$0}"
+  即BIN是语句dirname "${BASH_SOURCE-$0}"的执行结果。
+
+# shell变量$#,$@,$0,$1,$2的含义解释
+$$ 
+Shell本身的PID（ProcessID） 
+$! 
+Shell最后运行的后台Process的PID 
+$? 
+最后运行的命令的结束代码（返回值） 
+$- 
+使用Set命令设定的Flag一览 
+$* 
+所有参数列表。如"$*"用「"」括起来的情况、以"$1 $2 … $n"的形式输出所有参数。 
+$@ 
+所有参数列表。如"$@"用「"」括起来的情况、以"$1" "$2" … "$n" 的形式输出所有参数。 
+$# 
+添加到Shell的参数个数 
+$0 
+Shell本身的文件名 
+$1～$n 
+添加到Shell的各参数值。$1是第1参数、$2是第2参数…。 
+
+# 前面两行BIN是取得当前执行文件zeppelin-daemon.sh所在的目录
+'''
 BIN=$(dirname "${BASH_SOURCE-$0}")
 BIN=$(cd "${BIN}">/dev/null; pwd)
 
 . "${BIN}/common.sh"
 . "${BIN}/functions.sh"
-
-echo $JAVA_OPTS
 
 HOSTNAME=$(hostname)
 ZEPPELIN_NAME="Zeppelin"
