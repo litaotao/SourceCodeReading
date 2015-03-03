@@ -17,6 +17,20 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
+/*
+这里之所以能import 出zeppelin-zengine模块下面的com.nflabs.zeppelin.notebook包，
+是因为zeppelin-server中的pom.xml文件明显指出zeppelin-server模块依赖于模块
+zepplin-zengine。
+//
+import语句与C语言中的 #include 有些类似，语法为：
+    import package1[.package2…].classname;
+package 为包名，classname 为类名。
+//
+注意：
+import 只能导入包所包含的类，而不能导入包。
+为方便起见，我们一般不导入单独的类，而是导入包下所有的类，例如 import java.util.*;。
+
+*/
 import com.nflabs.zeppelin.notebook.JobListenerFactory;
 import com.nflabs.zeppelin.notebook.Note;
 import com.nflabs.zeppelin.notebook.Notebook;
