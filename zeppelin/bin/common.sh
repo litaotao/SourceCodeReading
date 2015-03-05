@@ -19,6 +19,11 @@
 # limitations under the License.
 #
 
+'''
+这个文件应该是定义一些zeppelin运行时环境变量和运行时参数。
+FWDIR获取当前绝对路径，即common.sh文件的绝对路径。
+'''
+
 FWDIR="$(cd $(dirname "$0"); pwd)"
 
 if [[ -z "${ZEPPELIN_HOME}" ]]; then
