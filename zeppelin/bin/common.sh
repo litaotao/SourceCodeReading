@@ -56,6 +56,9 @@ if [[ -z "${ZEPPELIN_WAR}" ]]; then
   fi
 fi
 
+'''
+find -L: Follow symbolic links，即在查找的时候也查找快捷方式。
+'''
 if [[ -z "${ZEPPELIN_API_WAR}" ]]; then
   if [[ -d "${ZEPPELIN_HOME}/zeppelin-docs/src/main/swagger" ]]; then
     export ZEPPELIN_API_WAR="${ZEPPELIN_HOME}/zeppelin-docs/src/main/swagger"
@@ -95,7 +98,9 @@ fi
 if [[ -d "${ZEPPELIN_HOME}/zeppelin-server/target/classes" ]]; then
   ZEPPELIN_CLASSPATH+=":${ZEPPELIN_HOME}/zeppelin-server/target/classes"
 fi
-
+'''
+这里的SPARK_HOME，HADOOP_HOME,HADOOP_CONF_DIR好像都没有定义啊，有点问题。
+'''
 if [[ ! -z "${SPARK_HOME}" ]] && [[ -d "${SPARK_HOME}" ]]; then
   addJarInDir "${SPARK_HOME}"
 fi

@@ -104,7 +104,8 @@ function initialize_default_directories() {
 '''
 local 简单地理解成局部变量吧。
 kill 信号值：
-  0： exit code indicates if a signal may be sent
+  0： exit code indicates if a signal may be sent，向某一进程发送一个无效的信号，
+      如果该进程存在（能够接收信号），echo $?为1，否则为0
   9： cannot be blocked
 执行这个函数具体还不知道要干嘛
 '''
@@ -182,6 +183,16 @@ nohup nice -n $ZEPPELIN_NICENESS $ZEPPELIN_RUNNER $JAVA_OPTS -cp $CLASSPATH $ZEP
 用nohup使zeppelin进程在后台可靠运行，并把启动的日志输出到 文件：ZEPPELIN_OUTFILE，输出信息包括标准输出和错误信息，并且在每次启动
 时都先清空这个ZEPPELIN_OUTFILE文件内容。
 -cp 是java启动参数：-cp <class search path of directories and zip/jar files>
+3. 
+/dev/null ：代表空设备文件
+>  ：代表重定向到哪里，例如：echo "123" > /home/123.txt
+1  ：表示stdout标准输出，系统默认值是1，所以">/dev/null"等同于"1>/dev/null"
+2  ：表示stderr标准错误
+&  ：表示等同于的意思，2>&1，表示2的输出重定向等同于1
+
+1 > /dev/null 2>&1 语句含义：
+1 > /dev/null ： 首先表示标准输出重定向到空设备文件，也就是不输出任何信息到终端，说白了就是不显示任何信息。
+2>&1 ：接着，标准错误输出重定向（等同于）标准输出，因为之前标准输出已经重定向到了空设备文件，所以标准错误输出也重定向到空设备文件。
 '''
 function start() {
   local pid
