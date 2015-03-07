@@ -127,7 +127,15 @@ function wait_for_zeppelin_to_die() {
   fi
   done
 }
+'''
+start() function in zeppelin-daemon.sh starts java process for Zeppelin server.
+It could just simply check if launching this java process succeed or not. But some case, 
+for example, even if java process is successfully launched, something still can be wrong 
+and Zeppelin server is not serving anything (process is still running),
 
+We wanted CI server detect this case and for doing that, wait_zeppelin_is_up_for_ci() waits 
+zeppelin server initializing itself and opening port and ready to serve.
+'''
 function wait_zeppelin_is_up_for_ci() {
   if [[ "${CI}" == "true" ]]; then
     local count=0;
