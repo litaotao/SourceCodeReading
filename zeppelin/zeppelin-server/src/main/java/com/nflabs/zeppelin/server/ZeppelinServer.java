@@ -57,7 +57,14 @@ public class ZeppelinServer extends Application {
   public static void main(String[] args) throws Exception {
     ZeppelinConfiguration conf = ZeppelinConfiguration.create();
     conf.setProperty("args", args);
-
+'''
+应该是有两个server，一个是web server，负责web页面上的交互；另一个是notebook server，负责执行
+有关notebook内容的操作吧。
+不太理解的是，这里的两个server都是和前台进行连接的，一个是普通连接，另一个是websocket连接。好像
+水星也是这样搞的，我不太了解websocket，不好说什么。刚开始我还理解为notebook server是在web server之后，
+由web server来调用notebook server里的东西呢，即对外只暴露web server。目前的情况是对外同时暴露了
+web server和notebook server。
+'''
     final Server jettyServer = setupJettyServer(conf);
     notebookServer = setupNotebookServer(conf);
 
