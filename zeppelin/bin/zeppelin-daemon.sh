@@ -135,6 +135,10 @@ and Zeppelin server is not serving anything (process is still running),
 
 We wanted CI server detect this case and for doing that, wait_zeppelin_is_up_for_ci() waits 
 zeppelin server initializing itself and opening port and ready to serve.
+
+Zeppelin uses travis as its CI server.
+CI environment variable is set by travis. 
+Check http://docs.travis-ci.com/user/ci-environment/#Environment-variables
 '''
 function wait_zeppelin_is_up_for_ci() {
   if [[ "${CI}" == "true" ]]; then
