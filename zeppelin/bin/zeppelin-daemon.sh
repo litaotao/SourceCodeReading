@@ -109,6 +109,23 @@ kill 信号值：
   9： cannot be blocked
 执行这个函数具体还不知道要干嘛
 '''
+
+function stop() {
+    local pid
+    echo "Going to stop ipython notebook server with spark integrated ..."
+    ## judge whether the process is running or not
+    if [[ -f "${PIDFILE}" ]]; then
+        pid=$(cat ${PIDFILE})
+        if kill -0 ${pid} > /dev/null 2>&1; then
+            echo -e "ipython notebook server with spark is already running ..."
+            return 0
+        else
+            kill -9 ${pid}
+            echo "ipython notebook server with spark stopped ..."
+    fi
+}
+
+
 function wait_for_zeppelin_to_die() {
   local pid
   local count
@@ -155,6 +172,7 @@ function wait_zeppelin_is_up_for_ci() {
     done
   fi
 }
+
 
 function print_log_for_ci() {
   if [[ "${CI}" == "true" ]]; then
