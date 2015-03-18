@@ -125,8 +125,76 @@ $ZEPPELIN_LOGFILE: ${ZEPPELIN_LOG_DIR}/zeppelin-${ZEPPELIN_IDENT_STRING}-${HOSTN
 
 com.nflabs.zeppelin.server.ZeppelinServer
 
+'''
+应该是有两个server，一个是web server，负责web页面上的交互；另一个是notebook server，负责执行
+有关notebook内容的操作吧。
+不太理解的是，这里的两个server都是和前台进行连接的，一个是普通连接，另一个是websocket连接。好像
+水星也是这样搞的，我不太了解websocket，不好说什么。刚开始我还理解为notebook server是在web server之后，
+由web server来调用notebook server里的东西呢，即对外只暴露web server。目前的情况是对外同时暴露了
+web server和notebook server。
+'''
+'''
+以下是主要分析的ZeppelinServer启动代码：
+花2小时了解java里jettyServer的模式；
+花1小时了解hood[钩子]技术；
+'''
+  public static void main(String[] args) throws Exception {
+    ZeppelinConfiguration conf = ZeppelinConfiguration.create();
+    conf.setProperty("args", args);
 
+    final Server jettyServer = setupJettyServer(conf);
+    notebookServer = setupNotebookServer(conf);
 
+    // REST api
+    final ServletContextHandler restApi = setupRestApiContextHandler();
+    /** NOTE: Swagger-core is included via the web.xml in zeppelin-web
+     * But the rest of swagger is configured here
+     */
+    final ServletContextHandler swagger = setupSwaggerContextHandler(conf);
+
+    // Web UI
+    final WebAppContext webApp = setupWebAppContext(conf);
+    //Below is commented since zeppelin-docs module is removed.
+    //final WebAppContext webAppSwagg = setupWebAppSwagger(conf);
+
+    // add all handlers
+    ContextHandlerCollection contexts = new ContextHandlerCollection();
+    //contexts.setHandlers(new Handler[]{swagger, restApi, webApp, webAppSwagg});
+    contexts.setHandlers(new Handler[]{swagger, restApi, webApp});
+    jettyServer.setHandler(contexts);
+
+    notebookServer.start();
+    LOG.info("Start zeppelin server");
+    jettyServer.start();
+    LOG.info("Started");
+
+    Runtime.getRuntime().addShutdownHook(new Thread(){
+      @Override public void run() {
+        LOG.info("Shutting down Zeppelin Server ... ");
+        try {
+          notebook.getInterpreterFactory().close();
+
+          jettyServer.stop();
+          notebookServer.stop();
+        } catch (Exception e) {
+          LOG.error("Error while stopping servlet container", e);
+        }
+        LOG.info("Bye");
+      }
+    });
+
+        // when zeppelin is started inside of ide (especially for eclipse)
+    // for graceful shutdown, input any key in console window
+    if (System.getenv("ZEPPELIN_IDENT_STRING") == null) {
+      try {
+        System.in.read();
+      } catch (IOException e) {
+      }
+      System.exit(0);
+    }
+
+    jettyServer.join();
+  }
 
 
 
