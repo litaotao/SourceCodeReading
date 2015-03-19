@@ -134,9 +134,24 @@ com.nflabs.zeppelin.server.ZeppelinServer
 web server和notebook server。
 '''
 '''
-以下是主要分析的ZeppelinServer启动代码：
-花2小时了解java里jettyServer的模式；
-花1小时了解hood[钩子]技术；
+有2个server吗
+JettyServer 
+NotebookServer -> 这个是ws连接
+
+但是有3个API类型，把zeppelin常用设置，notebook运算，更改，interpreter设置分开了吧。
+ZeppelinRestApi    
+NotebookRestApi
+InterpreterRestApi
+
+接下来：
+先通过notebook，notebookserver来了解notebook设计；
+然后通过zeppelin，notebook，interpreter这三个API类型来hack。
+序号:
+1. notebook
+2. notebookServer
+3. zeppelin api
+4. notebook api
+5. interpreter api
 '''
   public static void main(String[] args) throws Exception {
     ZeppelinConfiguration conf = ZeppelinConfiguration.create();
@@ -196,5 +211,247 @@ web server和notebook server。
     jettyServer.join();
   }
 
+'''
+1. notebook
+'''
 
+  public Notebook(ZeppelinConfiguration conf, SchedulerFactory schedulerFactory,
+      InterpreterFactory replFactory, JobListenerFactory jobListenerFactory) throws IOException,
+      SchedulerException {
+    this.conf = conf;
+    this.schedulerFactory = schedulerFactory;
+    this.replFactory = replFactory;
+    this.jobListenerFactory = jobListenerFactory;
+    quertzSchedFact = new org.quartz.impl.StdSchedulerFactory();
+    quartzSched = quertzSchedFact.getScheduler();
+    quartzSched.start();
+    CronJob.notebook = this;
+
+    loadAllNotes();
+  }
+
+'''
+2. notebookServer
+'''
+public NotebookServer() {
+    super(new InetSocketAddress(DEFAULT_PORT));
+    creatingwebSocketServerLog(DEFAULT_PORT);
+  }
+
+'''
+3. zeppelin api
+'''
+@Path("/")
+@Api(value = "/", description = "Zeppelin REST API root")
+public class ZeppelinRestApi {
+
+  /**
+   * Required by Swagger.
+   */
+  public ZeppelinRestApi() {
+    super();
+  }
+
+  /**
+   * Get the root endpoint Return always 200.
+   *
+   * @return 200 response
+   */
+  @GET
+  public Response getRoot() {
+    return Response.ok().build();
+  }
+}
+
+'''
+4. notebook api
+'''
+@Path("/notebook")
+@Produces("application/json")
+public class NotebookRestApi {
+  Logger logger = LoggerFactory.getLogger(NotebookRestApi.class);
+  Gson gson = new Gson();
+  private Notebook notebook;
+
+  public NotebookRestApi() {}
+
+  public NotebookRestApi(Notebook notebook) {
+    this.notebook = notebook;
+  }
+
+  /**
+   * bind a setting to note
+   * @throws IOException 
+   */
+  @PUT
+  @Path("interpreter/bind/{noteId}")
+  public Response bind(@PathParam("noteId") String noteId, String req) throws IOException {
+    List<String> settingIdList = gson.fromJson(req, new TypeToken<List<String>>(){}.getType());
+    notebook.bindInterpretersToNote(noteId, settingIdList);
+    return new JsonResponse(Status.OK).build();
+  }
+
+  /**
+   * list binded setting
+   */
+  @GET
+  @Path("interpreter/bind/{noteId}")
+  public Response bind(@PathParam("noteId") String noteId) {
+    List<InterpreterSettingListForNoteBind> settingList
+      = new LinkedList<InterpreterSettingListForNoteBind>();
+
+    List<InterpreterSetting> selectedSettings = notebook.getBindedInterpreterSettings(noteId);
+    for (InterpreterSetting setting : selectedSettings) {
+      settingList.add(new InterpreterSettingListForNoteBind(
+          setting.id(),
+          setting.getName(),
+          setting.getGroup(),
+          setting.getInterpreterGroup(),
+          true)
+      );
+    }
+
+    List<InterpreterSetting> availableSettings = notebook.getInterpreterFactory().get();
+    for (InterpreterSetting setting : availableSettings) {
+      boolean selected = false;
+      for (InterpreterSetting selectedSetting : selectedSettings) {
+        if (selectedSetting.id().equals(setting.id())) {
+          selected = true;
+          break;
+        }
+      }
+
+      if (!selected) {
+        settingList.add(new InterpreterSettingListForNoteBind(
+            setting.id(),
+            setting.getName(),
+            setting.getGroup(),
+            setting.getInterpreterGroup(),
+            false)
+        );
+      }
+    }
+    return new JsonResponse(Status.OK, "", settingList).build();
+  }
+}
+
+
+'''
+5. interpreter api
+'''
+
+@Path("/interpreter")
+@Produces("application/json")
+@Api(value = "/interpreter", description = "Zeppelin Interpreter REST API")
+public class InterpreterRestApi {
+  Logger logger = LoggerFactory.getLogger(InterpreterRestApi.class);
+
+  private InterpreterFactory interpreterFactory;
+
+  Gson gson = new Gson();
+
+  public InterpreterRestApi() {
+
+  }
+
+  public InterpreterRestApi(InterpreterFactory interpreterFactory) {
+    this.interpreterFactory = interpreterFactory;
+  }
+
+  /**
+   * List all interpreter settings
+     * @return
+   */
+  @GET
+  @Path("setting")
+  @ApiOperation(httpMethod = "GET", value = "List all interpreter setting")
+  @ApiResponses(value = {@ApiResponse(code = 500, message = "When something goes wrong")})
+  public Response listSettings() {
+    List<InterpreterSetting> interpreterSettings = null;
+    interpreterSettings = interpreterFactory.get();
+    return new JsonResponse(Status.OK, "", interpreterSettings).build();
+  }
+
+  /**
+   * Add new interpreter setting
+   * @param message
+   * @return
+   * @throws IOException
+   * @throws InterpreterException
+   */
+  @POST
+  @Path("setting")
+  @ApiOperation(httpMethod = "GET", value = "Create new interpreter setting")
+  @ApiResponses(value = {@ApiResponse(code = 201, message = "On success")})
+  public Response newSettings(String message) throws InterpreterException, IOException {
+    NewInterpreterSettingRequest request = gson.fromJson(message,
+        NewInterpreterSettingRequest.class);
+    Properties p = new Properties();
+    p.putAll(request.getProperties());
+    interpreterFactory.add(request.getName(), request.getGroup(), request.getOption(), p);
+    return new JsonResponse(Status.CREATED, "").build();
+  }
+
+  @PUT
+  @Path("setting/{settingId}")
+  public Response updateSetting(String message, @PathParam("settingId") String settingId) {
+    logger.info("Update interpreterSetting {}", settingId);
+
+    try {
+      UpdateInterpreterSettingRequest p = gson.fromJson(message,
+          UpdateInterpreterSettingRequest.class);
+      interpreterFactory.setPropertyAndRestart(settingId, p.getOption(), p.getProperties());
+    } catch (InterpreterException e) {
+      return new JsonResponse(Status.NOT_FOUND, e.getMessage(), e).build();
+    } catch (IOException e) {
+      return new JsonResponse(Status.INTERNAL_SERVER_ERROR, e.getMessage(), e).build();
+    }
+    InterpreterSetting setting = interpreterFactory.get(settingId);
+    if (setting == null) {
+      return new JsonResponse(Status.NOT_FOUND, "", settingId).build();
+    }
+    return new JsonResponse(Status.OK, "", setting).build();
+  }
+
+  @DELETE
+  @Path("setting/{settingId}")
+  @ApiOperation(httpMethod = "GET", value = "Remove interpreter setting")
+  @ApiResponses(value = {@ApiResponse(code = 500, message = "When something goes wrong")})
+  public Response removeSetting(@PathParam("settingId") String settingId) throws IOException {
+    logger.info("Remove interpreterSetting {}", settingId);
+    interpreterFactory.remove(settingId);
+    return new JsonResponse(Status.OK).build();
+  }
+
+  @PUT
+  @Path("setting/restart/{settingId}")
+  @ApiOperation(httpMethod = "GET", value = "restart interpreter setting")
+  @ApiResponses(value = {
+      @ApiResponse(code = 404, message = "Not found")})
+  public Response restartSetting(@PathParam("settingId") String settingId) {
+    logger.info("Restart interpreterSetting {}", settingId);
+    try {
+      interpreterFactory.restart(settingId);
+    } catch (InterpreterException e) {
+      return new JsonResponse(Status.NOT_FOUND, e.getMessage(), e).build();
+    }
+    InterpreterSetting setting = interpreterFactory.get(settingId);
+    if (setting == null) {
+      return new JsonResponse(Status.NOT_FOUND, "", settingId).build();
+    }
+    return new JsonResponse(Status.OK, "", setting).build();
+  }
+
+  /**
+   * List all available interpreters by group
+   */
+  @GET
+  @ApiOperation(httpMethod = "GET", value = "List all available interpreters")
+  @ApiResponses(value = {
+      @ApiResponse(code = 500, message = "When something goes wrong")})
+  public Response listInterpreter(String message) {
+    Map<String, RegisteredInterpreter> m = Interpreter.registeredInterpreters;
+    return new JsonResponse(Status.OK, "", m).build();
+  }
+}
 
