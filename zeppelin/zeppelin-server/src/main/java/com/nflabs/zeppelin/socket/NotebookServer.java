@@ -17,24 +17,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
-/*
-这里之所以能import 出zeppelin-zengine模块下面的com.nflabs.zeppelin.notebook包，
-是因为zeppelin-server中的pom.xml文件明显指出zeppelin-server模块依赖于模块
-zepplin-zengine。
-//
-import语句与C语言中的 #include 有些类似，语法为：
-    import package1[.package2…].classname;
-package 为包名，classname 为类名。
-//
-注意：
-import 只能导入包所包含的类，而不能导入包。
-为方便起见，我们一般不导入单独的类，而是导入包下所有的类，例如 import java.util.*;。
-//
-import路径：比如说语句 import com.nflabs.zeppelin.notebook.Note;
-1. 先在当前目录下面递归查询是否有com.nflabs.zeppelin.notebook包；
-2. 在$CLASSPATH下面递归查询com.nflabs.zeppelin.notebook包；
-因为第一句 package com.nflabs.zeppelin.socket 所以 NotebookServer 这个class所在的当前路径是 com.nflabs.zeppelin.socket
-*/
 import com.nflabs.zeppelin.notebook.JobListenerFactory;
 import com.nflabs.zeppelin.notebook.Note;
 import com.nflabs.zeppelin.notebook.Notebook;
@@ -50,29 +32,8 @@ import com.nflabs.zeppelin.socket.Message.OP;
  *
  * @author anthonycorbacho
  */
-/*
-关于java里的extends和implements，可以参考：http://blog.csdn.net/chen_chun_guang/article/details/6323201
-这里定义了一个类NotebookServer，它继承了类WebSocketServer，并实现了JobListenerFactory接口的方法。
-*/
 public class NotebookServer extends WebSocketServer implements JobListenerFactory {
-/*
-//关于访问控制
-public  共有的，对所有类可见。
-protected 受保护的，对同一包内的类和所有子类可见。
-private 私有的，在同一类内可见。
-默认的 在同一包内可见。默认不使用任何修饰符。
-//关于final关键字
-根据程序上下文环境，Java关键字final有“这是无法改变的”或者“终态的”含义，它可以修饰非抽象类、非抽象类成员方法和变量。你可能出于两种理解而需要阻止改变：设计或效率。
-        final类不能被继承，没有子类，final类中的方法默认是final的。
-        final方法不能被子类的方法覆盖，但可以被继承。
-        final成员变量表示常量，只能被赋值一次，赋值后值不再改变。
-        final不能用于修饰构造方法。
-        注意：父类的private成员方法是不能被子类方法覆盖的，因此private类型的方法默认是final类型的。
-//关于static关键字
-static表示“全局”或者“静态”的意思，用来修饰成员变量和成员方法，也可以形成静态static代码块，但是Java语言中没有全局变量的概念。
-被static修饰的成员变量和成员方法独立于该类的任何对象。也就是说，它不依赖类特定的实例，被类的所有实例共享。只要这个类被加载，
-Java虚拟机就能根据类名在运行时数据区的方法区内定找到他们。因此，static对象可以在它的任何对象创建之前访问，无需引用任何对象。
-*/
+
   private static final Logger LOG = LoggerFactory.getLogger(NotebookServer.class);
   private static final int DEFAULT_PORT = 8282;
 
@@ -311,7 +272,7 @@ Java虚拟机就能根据类名在运行时数据区的方法区内定找到他�
         notebook.refreshCron(note.id());
       }
       note.persist();
-      
+
       broadcastNote(note);
       broadcastNoteList();
     }

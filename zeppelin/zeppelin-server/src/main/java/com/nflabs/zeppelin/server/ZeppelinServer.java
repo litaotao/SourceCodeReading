@@ -1,5 +1,15 @@
 package com.nflabs.zeppelin.server;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.net.ssl.SSLContext;
+import javax.servlet.DispatcherType;
+import javax.ws.rs.core.Application;
+
 import org.apache.cxf.jaxrs.servlet.CXFNonSpringJaxrsServlet;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -23,23 +33,14 @@ import com.nflabs.zeppelin.notebook.Notebook;
 import com.nflabs.zeppelin.rest.InterpreterRestApi;
 import com.nflabs.zeppelin.rest.NotebookRestApi;
 import com.nflabs.zeppelin.rest.ZeppelinRestApi;
+import com.nflabs.zeppelin.scheduler.SchedulerFactory;
 import com.nflabs.zeppelin.socket.NotebookServer;
 import com.nflabs.zeppelin.socket.SslWebSocketServerFactory;
-import com.nflabs.zeppelin.scheduler.SchedulerFactory;
 import com.wordnik.swagger.jersey.config.JerseyJaxrsConfig;
-
-import java.io.File;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Set;
-
-import javax.net.ssl.SSLContext;
-import javax.servlet.DispatcherType;
-import javax.ws.rs.core.Application;
 
 /**
  * Main class of Zeppelin.
- * 
+ *
  * @author Leemoonsoo
  *
  */
@@ -57,14 +58,7 @@ public class ZeppelinServer extends Application {
   public static void main(String[] args) throws Exception {
     ZeppelinConfiguration conf = ZeppelinConfiguration.create();
     conf.setProperty("args", args);
-'''
-应该是有两个server，一个是web server，负责web页面上的交互；另一个是notebook server，负责执行
-有关notebook内容的操作吧。
-不太理解的是，这里的两个server都是和前台进行连接的，一个是普通连接，另一个是websocket连接。好像
-水星也是这样搞的，我不太了解websocket，不好说什么。刚开始我还理解为notebook server是在web server之后，
-由web server来调用notebook server里的东西呢，即对外只暴露web server。目前的情况是对外同时暴露了
-web server和notebook server。
-'''
+
     final Server jettyServer = setupJettyServer(conf);
     notebookServer = setupNotebookServer(conf);
 
@@ -77,11 +71,13 @@ web server和notebook server。
 
     // Web UI
     final WebAppContext webApp = setupWebAppContext(conf);
-    final WebAppContext webAppSwagg = setupWebAppSwagger(conf);
+    //Below is commented since zeppelin-docs module is removed.
+    //final WebAppContext webAppSwagg = setupWebAppSwagger(conf);
 
     // add all handlers
     ContextHandlerCollection contexts = new ContextHandlerCollection();
-    contexts.setHandlers(new Handler[]{swagger, restApi, webApp, webAppSwagg});
+    //contexts.setHandlers(new Handler[]{swagger, restApi, webApp, webAppSwagg});
+    contexts.setHandlers(new Handler[]{swagger, restApi, webApp});
     jettyServer.setHandler(contexts);
 
     notebookServer.start();
@@ -93,6 +89,8 @@ web server和notebook server。
       @Override public void run() {
         LOG.info("Shutting down Zeppelin Server ... ");
         try {
+          notebook.getInterpreterFactory().close();
+
           jettyServer.stop();
           notebookServer.stop();
         } catch (Exception e) {
@@ -101,6 +99,18 @@ web server和notebook server。
         LOG.info("Bye");
       }
     });
+
+
+    // when zeppelin is started inside of ide (especially for eclipse)
+    // for graceful shutdown, input any key in console window
+    if (System.getenv("ZEPPELIN_IDENT_STRING") == null) {
+      try {
+        System.in.read();
+      } catch (IOException e) {
+      }
+      System.exit(0);
+    }
+
     jettyServer.join();
   }
 
@@ -186,7 +196,7 @@ web server和notebook server。
     cxfContext.setSessionHandler(new SessionHandler());
     cxfContext.setContextPath("/api");
     cxfContext.addServlet(cxfServletHolder, "/*");
-    
+
     cxfContext.addFilter(new FilterHolder(CorsFilter.class), "/*",
         EnumSet.allOf(DispatcherType.class));
     return cxfContext;
@@ -199,14 +209,14 @@ web server和notebook server。
    */
   private static ServletContextHandler setupSwaggerContextHandler(
     ZeppelinConfiguration conf) {
-  
+
     // Configure Swagger-core
     final ServletHolder swaggerServlet =
         new ServletHolder(new JerseyJaxrsConfig());
     swaggerServlet.setName("JerseyJaxrsConfig");
     swaggerServlet.setInitParameter("api.version", "1.0.0");
     swaggerServlet.setInitParameter(
-        "swagger.api.basepath", 
+        "swagger.api.basepath",
         "http://localhost:" + conf.getServerPort() + "/api");
     swaggerServlet.setInitOrder(2);
 
@@ -222,7 +232,7 @@ web server和notebook server。
 
   private static WebAppContext setupWebAppContext(
       ZeppelinConfiguration conf) {
-    
+
     WebAppContext webApp = new WebAppContext();
     File warPath = new File(conf.getString(ConfVars.ZEPPELIN_WAR));
     if (warPath.isDirectory()) {
@@ -248,7 +258,7 @@ web server和notebook server。
    *
    * @return WebAppContext with swagger ui context
    */
-  private static WebAppContext setupWebAppSwagger(
+  /*private static WebAppContext setupWebAppSwagger(
       ZeppelinConfiguration conf) {
 
     WebAppContext webApp = new WebAppContext();
@@ -264,7 +274,7 @@ web server和notebook server。
     // Bind swagger-ui to the path HOST/docs
     webApp.addServlet(new ServletHolder(new DefaultServlet()), "/docs/*");
     return webApp;
-  }
+  }*/
 
   public ZeppelinServer() throws Exception {
     ZeppelinConfiguration conf = ZeppelinConfiguration.create();
@@ -288,7 +298,7 @@ web server和notebook server。
     /** Rest-api root endpoint */
     ZeppelinRestApi root = new ZeppelinRestApi();
     singletons.add(root);
-    
+
     NotebookRestApi notebookApi = new NotebookRestApi(notebook);
     singletons.add(notebookApi);
 
