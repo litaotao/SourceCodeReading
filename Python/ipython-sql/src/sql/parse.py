@@ -4,6 +4,7 @@ from sqlalchemy.engine.url import URL
 
 
 def parse(cell, config):
+    import pdb; pdb.set_trace()
     parts = [part.strip() for part in cell.split(None, 1)]
     if not parts:
         return {'connection': '', 'sql': ''}
