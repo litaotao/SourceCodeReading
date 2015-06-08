@@ -1,3 +1,40 @@
+'''
+### 1. 变量名定义
+一个前导下划线：表示非公有。 
+一个后缀下划线：避免关键字冲突。 
+两个前导下划线：当命名一个类属性引起名称冲突时使用。 
+两个前导和后缀下划线：“魔”（有特殊用途）对象或者属性，例如__init__或者__file__。绝对不要创造这样的名字，而只是使用它们。 
+
+Python 用下划线作为变量前缀和后缀指定特殊变量。 
+
+_xxx     不能用'from module import *'导入 
+__xxx__  系统定义名字 
+__xxx    类中的私有变量名 
+
+---------------------------------       
+
+### 2. __all__
+模块中的 __all__ 变量，表示 "from module import *" 时可以import到runtime的变量名字
+
+---------------------------------
+
+### 3. 良好习惯  from module import func as _func
+这种方式时刻提醒自己，_func 是从其他包导出来的，在 __all__ 里最好不要加上这些  _func。
+比如代码里的：from operator import itemgetter as _itemgetter, eq as _eq
+
+----------------------------------
+
+### 4. keyword模块很简单，但里面有一个很值得学习的写法：iskeyword = frozenset(kwlist).__contains__
+其中kwlist是自定义的一个关键字的list。frozenset is frozen + set, 就是一个不可以增删元素的set，__contains__是
+set的一个函数方法，体现了python中一切皆为对象的思想，这里把一个对象的函数方法赋值给一个变量，调用这个变量就
+相当于是调用那个对象的函数方法了，很灵活，但也容易犯错哦。
+
+----------------------------------
+
+### 5. 
+
+'''
+
 __all__ = ['Counter', 'deque', 'defaultdict', 'namedtuple', 'OrderedDict']
 # For bootstrapping reasons, the collection ABCs are defined in _abcoll.py.
 # They should however be considered an integral part of collections.py.
@@ -18,15 +55,15 @@ try:
 except ImportError:
     from dummy_thread import get_ident as _get_ident
 
-'''
-###
-恩，要看一下基础的那几个包：itertools，operator，heapq
-'''
 
+'''
 ################################################################################
 ### OrderedDict
+1. 字典的update方法
+2. 还是没有明白为啥要用 try and except 来初始化 __root 变量  
+3. 类的私有属性 __root 会被 name mangling, 在外访问需要使用  object._ClassName__AttributeName
 ################################################################################
-
+'''
 class OrderedDict(dict):
     'Dictionary that remembers insertion order'
     # An inherited dict maps keys to values.
@@ -38,33 +75,10 @@ class OrderedDict(dict):
     # The circular doubly linked list starts and ends with a sentinel element.
     # The sentinel element never gets deleted (this simplifies the algorithm).
     # Each link is stored as a list of length three:  [PREV, NEXT, KEY].
-'''
-try: self.__root 这句初始化时总会raise exception的，这样应该是保证except下的初始化吧。
-In [9]: a = c.OrderedDict(a=1)
-> /System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/collections.py(45)__init__()
--> if len(args) > 1:
-(Pdb) args
-self = OrderedDict()
-args = ()
-kwds = {'a': 1}
-(Pdb) n
-> /System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/collections.py(47)__init__()
--> try:
-(Pdb) self.__root
-*** AttributeError: 'OrderedDict' object has no attribute '__root'
-########
-下面这三句是神马意思哦，还没搞懂，而且执行完这三句后，self__root还是会raise exception
-self.__root = root = []                     # sentinel node
-root[:] = [root, root, None]
-self.__map = {} 
-#########
-self.__update 是用了abc.py和_abcoll.py的内容。
-'''
     def __init__(self, *args, **kwds):
         '''Initialize an ordered dictionary.  The signature is the same as
         regular dictionaries, but keyword arguments are not recommended because
         their insertion order is arbitrary.
-
         '''
         if len(args) > 1:
             raise TypeError('expected at most 1 arguments, got %d' % len(args))
