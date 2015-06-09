@@ -57,12 +57,53 @@ except ImportError:
 
 
 '''
-################################################################################
+-------------------------------------------------------------------------------
 ### OrderedDict
 1. 字典的update方法
-2. 还是没有明白为啥要用 try and except 来初始化 __root 变量  
+2. 还是没有明白为啥要用 try and except 来初始化 __root 变量，最后在伟大的SO上得到了答案【7分之之内】：http://stackoverflow.com/questions/30704874/why-collections-ordereddict-use-try-and-except-to-initialize-variables
+就是为了防止用户在生成一个对象后再次调用__init__函数，当然可以有其他方式来做检查，类似单例模式一样。
+Essentially it seems to be a precaution for cases where users call __init__ a second time (instead of update) like this:
+
+In [1]: from collections import OrderedDict
+
+In [2]: od = OrderedDict([(1,2), (3,4)])
+
+In [3]: od
+Out[3]: OrderedDict([(1, 2), (3, 4)])
+
+In [4]: od.__init__([(5,6), (7,8)])
+
+In [5]: od
+Out[5]: OrderedDict([(1, 2), (3, 4), (5, 6), (7, 8)])  
 3. 类的私有属性 __root 会被 name mangling, 在外访问需要使用  object._ClassName__AttributeName
-################################################################################
+
+-------------------------------------------------------------------------------
+4. ordereddict相关排序
+>>> from collections import OrderedDict
+>>> d = {'banana': 3, 'apple':4, 'pear': 1, 'orange': 2}
+#按key排序
+>>>OrderedDict(sorted(d.items(), key=lambda t: t[0]))
+OrderedDict([('apple',4), ('banana', 3), ('orange', 2), ('pear', 1)])
+#按value排序
+>>>OrderedDict(sorted(d.items(), key=lambda t: t[1]))
+OrderedDict([('pear',1), ('orange', 2), ('banana', 3), ('apple', 4)])
+#按key的长度排序
+>>>OrderedDict(sorted(d.items(), key=lambda t: len(t[0])))
+OrderedDict([('pear',1), ('apple', 4), ('orange', 2), ('banana', 3)])
+
+-------------------------------------------------------------------------------
+5. classmethod
+
+一般来说，要使用某个类的方法，需要先实例化一个对象再调用方法。
+而使用@staticmethod或@classmethod，就可以不需要实例化，直接类名.方法名()来调用。
+这有利于组织代码，把某些应该属于某个类的函数给放到那个类里去，同时有利于命名空间的整洁。
+
+既然@staticmethod和@classmethod都可以直接类名.方法名()来调用，那他们有什么区别呢
+从它们的使用上来看,
+@staticmethod不需要表示自身对象的self和自身类的cls参数，就跟使用函数一样。
+@classmethod也不需要self参数，但第一个参数需要是表示自身类的cls参数。
+如果在@staticmethod中要调用到这个类的一些属性方法，只能直接类名.属性名或类名.方法名。
+而@classmethod因为持有cls参数，可以来调用类的属性，类的方法，实例化对象等，避免硬编码。
 '''
 class OrderedDict(dict):
     'Dictionary that remembers insertion order'
@@ -226,20 +267,7 @@ class OrderedDict(dict):
     def copy(self):
         'od.copy() -> a shallow copy of od'
         return self.__class__(self)
-'''
-classmethod
-一般来说，要使用某个类的方法，需要先实例化一个对象再调用方法。
-而使用@staticmethod或@classmethod，就可以不需要实例化，直接类名.方法名()来调用。
-这有利于组织代码，把某些应该属于某个类的函数给放到那个类里去，同时有利于命名空间的整洁。
 
-既然@staticmethod和@classmethod都可以直接类名.方法名()来调用，那他们有什么区别呢
-从它们的使用上来看,
-@staticmethod不需要表示自身对象的self和自身类的cls参数，就跟使用函数一样。
-@classmethod也不需要self参数，但第一个参数需要是表示自身类的cls参数。
-如果在@staticmethod中要调用到这个类的一些属性方法，只能直接类名.属性名或类名.方法名。
-而@classmethod因为持有cls参数，可以来调用类的属性，类的方法，实例化对象等，避免硬编码。
-下面上代码。
-'''
     @classmethod
     def fromkeys(cls, iterable, value=None):
         '''OD.fromkeys(S[, v]) -> New ordered dictionary with keys from S.
@@ -431,10 +459,14 @@ def namedtuple(typename, field_names, verbose=False, rename=False):
 
     return result
 
-
+'''
 ########################################################################
 ###  Counter
+
+-------------------------------------------------------------------------------
+
 ########################################################################
+'''
 
 class Counter(dict):
     '''Dict subclass for counting hashable items.  Sometimes called a bag
